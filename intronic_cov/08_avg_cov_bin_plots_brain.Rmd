@@ -1,0 +1,71 @@
+---
+title: "avg_cov_bin_plots"
+output: html_document
+date: "2024-07-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+library("ggpubr")
+library("RColorBrewer")
+
+## libs
+library("reshape2")
+library("ggplot2")
+`%notin%` <- Negate(`%in%`)
+
+
+## Set working directory
+setwd("/demo_folder/")
+
+### All brain genes ### (Read all tsv files)
+
+files <- list.files(path="/demo_folder/",pattern="sum_coverage*")
+head(files)
+file.exists(files)
+dir(pattern="sum_coverage*")
+n_files = length(files)
+sum_avg_cov <- c()
+for( i in 1:n_files)
+{
+  x <- read.table(file=files[i], sep=" ", header=F, as.is=T)
+  sum_avg_cov <- cbind(sum_avg_cov, x[,2])
+}
+rownames(sum_avg_cov) <- x[,1]
+colnames(sum_avg_cov) <- files %>% str_replace(".tsv","")
+View(sum_avg_cov)
+sum_avg_cov_df <- as.data.frame.matrix(sum_avg_cov) ## convert to data frame ##
+
+### average plots ###
+
+animal1_SM983_SM604 <- data.frame(matrix(ncol = 3, nrow = 100))
+animal8_SM285_SM698 <- data.frame(matrix(ncol = 3, nrow = 100))
+
+animal1_SM983_SM604$bin <- 1:100
+animal8_SM285_SM698$bin <- 1:100
+
+animal1_SM983_SM604$avg_sum <- rowMeans(sum_avg_cov_df[,c('sum_coverage_SM983','sum_coverage_SM604')],na.rm=TRUE)
+animal8_SM285_SM698$avg_sum <- rowMeans(sum_avg_cov_df[,c('sum_coverage_SM285','sum_coverage_SM698')],na.rm=TRUE)
+
+animal1_SM983_SM604$log <- log(animal1_SM983_SM604$avg_sum)
+animal8_SM285_SM698$log <- log(animal8_SM285_SM698$avg_sum)
+
+animal1_SM983_SM604 <- subset(animal1_SM983_SM604, select = -c(X1, X2, X3))
+animal8_SM285_SM698 <- subset(animal8_SM285_SM698, select = -c(X1, X2, X3))
+
+## all animals ###
+ggp_log <- ggplot() + 
+geom_line(data = animal1_SM983_SM604,aes(x=bin,y=log),col = "red") + 
+geom_line(data = animal8_SM285_SM698,aes(x=bin,y=log),col = "blue") + 
+  ggtitle("log(average coverage per bin) \n") +
+  ylab("Average coverage per bin") +
+  theme_classic(base_size = 16)          
+
+ggp_log
+
+
+dev.off()
+
+
