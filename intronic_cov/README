@@ -1,0 +1,58 @@
+Calculation of intronic coverage workflow
+
+All these scripts were run on HPCC, therefore required software is called using module load command (bash scripts use python 3.6, bedtools 2.30.1, samtools 1.6 or higher, and perl). 
+
+1)	Preparation of text file with intron information for a list of genes.
+You will need an input file (example_ensemble_genelist.csv) with a list of ensemble gene IDs for mouse (mm10, algorithm also works with hg38). Biomart was used to retrieve gene information (symbol, chr, strand, transcript start/end) for the list of genes. This list of transcripts is then uploaded to UCSC table browser to obtain positions of all the introns for these transcripts (linked to respective gene ids). This process is done by R script 01_extract_transcripts_for_introns.R. 
+
+Script: /demo_folder/01_extract_transcripts_for_introns.R
+
+There will be two output files after running this R script: 
+(1)	biomart_ensemble_ids_position.txt: a text file with chromosome name, position, strand, gene name, corresponding to the input gene list 
+(2)	biomart_transcript_ids.txt: a list of transcripts corresponding to the input gene list
+
+•	The complete list of exons in mm10 retrieved from UCSC table browser (all_exons.bed) used for current analysis is provided as this file is used later during filtering step.
+
+File location: /demo_folder/additional_files/all_exons.bed
+
+2)	Generating bed file for introns in the list of transcripts.
+The file “biomart_transcript_ids.txt” is used to manually download introns from UCSC table browser. The first output file 'biomart_transcript_ids_introns.bed' is further processed to match the transcript (Ensembl id) with their respective introns in the sorted second output file biomart_transcript_ids_introns_sorted.bed
+
+Script: /demo_folder/02_processing_intron_transcript.sh
+
+3)	Generating genes with intron bed.
+The following script matches the list of introns within respective transcripts is matched to respective genes (one gene has multiple transcripts with multiple introns) avoiding duplication.
+
+Script: /demo_folder/03_generate_intron_beds.sh
+
+4)	Selecting large and extra-large introns (L/XL > 50 kb).
+Introns originating from all identified transcripts belonging to one gene are merged, exons are removed. After exon removal, only unique L/XL introns (> 50 kb) are retained. These introns are divided into 100 bins. This is done by running the script 04_extract_L_XL_introns_bins.sh.
+The list of intron coordinates for a particular gene is then copied into single individual 'gene' files in folder 'LXL_introns_bed'.
+
+Script: /demo_folder/04_extract_L_XL_introns_bins.sh
+
+5)	Extracting list of genes with L/XL introns.
+The list of genes with L/XL introns is in the folder LXL_introns_bed. The output file of this step is biomart_ensemble_ids_position_lxl.txt
+
+Script: /demo_folder/05_create_intron_ensemble_list.sh
+
+NOTE: Steps (1) – (5) require to be executed once for a given organism (in this case mouse). The final list of introns is common for mouse brain, kidney, and liver analysis.
+
+6)	Calculating coverage for selected introns (L/XL > 50 kb) 
+The processed BAM files from total RNAseq experiment for mouse brain tissue [demo: one pair of animals].
+
+The input file biomart_ensemble_ids_position_lxl.txt and BAM files from young and old animals is used to calculate intronic coverage for all genes in the L/XL introns gene list. The bins of all introns are then added to give the final binned coverage for each gene. This is done by running the script 06_extract_L_XL_introns_list_brain.sh.
+
+Script location: /demo_folder/06_extract_L_XL_introns_list_brain.sh
+
+7)	Summarizing coverage for all L/XL introns with respect to young/old samples.
+The summarized intronic coverage for each animal is calculated using script 07_merge_coverage_by_replicates.sh.
+
+Script location: /demo_folder/07_merge_coverage_by_replicates.sh
+
+8)	Visualization: Generating plots for intronic coverage.
+The intronic coverage for young and old is plotted by running the R script 08_avg_cov_bin_plots_brain.Rmd. Before running, please specify the path to your working directory. (In this version, sample names are hard-coded. The final version will read sample names from the file). Young animal is plotted in red, old in blue.
+
+Script location: /demo_folder/08_avg_cov_bin_plots_brain.Rmd 
+ 
+
